@@ -31,11 +31,7 @@ def run_example_NEST():
 		sample = NEST_object.get_trial()
 		print(f"Sample: {sample}")
 		
-		# Generate random response value
-		mean = np.array([0.0 for i in range(num_dims)])
-		cov = 2.0 * np.eye(num_dims)
-		val = np.random.multivariate_normal(mean, cov)
-		
+		# Generate random response value		
 		tau = np.random.uniform(0, 1)
 		response = 0.0 if sample[0] < 0.0 else 1.0
 		
