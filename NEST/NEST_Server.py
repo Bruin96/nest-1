@@ -457,9 +457,9 @@ class NEST_Server:
 			config_dict else 0.0003
 			
 		# Initialise acquisition function
-		self.a = config_dict['a'] if 'a' in config_dict else 0.8#1.5#4.87
-		self.b = config_dict['b'] if 'b' in config_dict else 10.6#6.0#8.50
-		self.c = config_dict['c'] if 'c' in config_dict else 6.0#3.0#2.81
+		self.a = config_dict['a'] if 'a' in config_dict else 0.8
+		self.b = config_dict['b'] if 'b' in config_dict else 10.6
+		self.c = config_dict['c'] if 'c' in config_dict else 6.0
 		self.d = config_dict['d'] if 'd' in config_dict else 4.0
 		
 		self.random_multiplier = max(0.0, config_dict['random_multiplier'] \

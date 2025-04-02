@@ -47,32 +47,7 @@ class NEST:
 				
 		
 	def start_new(self, server_config_dict={}, experiment_params={}):
-		# Construct server config file
-		with open(self.results_dir + '/server_config.json', 'w') as f:
-			json.dump(server_config_dict, f)
-			
-		# Initialise experiment params
-		self.set_experiment_params(**experiment_params)
-		
-		# Start server
-		subprocess.Popen([sys.executable, \
-			'NEST/NEST_Server.py', \
-			self.results_dir + '/server_config.json'])
-			
-		# Wait for server to start up
-		print(f"Waiting for server to spin up...")
-		time.sleep(5.0)
-		
-		# Initialise connection
-		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		
-		# Read port number from file
-		with open(self.results_dir + "/port_number.txt", "r") as file_obj:
-			self.port = int(file_obj.readline())
-		
-		self.sock.connect(('127.0.0.1', self.port))
-		
-		print(f"Connected to server.")
+		self._initialise_server(server_config_dict, experiment_params)
 		
 		try:
 			self.update_server_configuration(**server_config_dict)
@@ -88,8 +63,21 @@ class NEST:
 				f"not a user error, then please report this bug on Github.")
 			
 		
+	def restart(self, server_config_dict={}, experiment_params={}):
+		self._initialise_server(server_config_dict, experiment_params)
 		
-		
+		try:
+			self.update_server_configuration(**server_config_dict)
+			self._restart_connection()
+		except ValueError as valueError:
+			print(f"A value error occurred on the server side:\n{valueError}")
+		except TypeError as typeError:
+			print(f"A type error occurred on the server side:\n{typeError}")
+		except Exception as genericError:
+			print(f"An internal error occurred on the server side:\n{genericError}" \
+				f"Apologies for the inconvenience. If you believe this is " \
+				f"not a user error, then please report this bug on Github.")
+				
 		
 	def update_server_configuration(self, **kwargs):
 		# Construct config_dict
@@ -172,9 +160,47 @@ class NEST:
 			self.host = config_filename["host"]
 			self.port = config_filename["port"]
 			
+			
+	def _initialise_server(self, server_config_dict, experiment_params):
+		# Construct server config file
+		with open(self.results_dir + '/server_config.json', 'w') as f:
+			json.dump(server_config_dict, f)
+			
+		# Initialise experiment params
+		self.set_experiment_params(**experiment_params)
+		
+		# Start server
+		subprocess.Popen([sys.executable, \
+			'NEST/NEST_Server.py', \
+			self.results_dir + '/server_config.json'])
+			
+		# Wait for server to start up
+		print(f"Waiting for server to spin up...")
+		time.sleep(5.0)
+		
+		# Initialise connection
+		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		
+		# Read port number from file
+		with open(self.results_dir + "/port_number.txt", "r") as file_obj:
+			self.port = int(file_obj.readline())
+		
+		self.sock.connect(('127.0.0.1', self.port))
+		
+		print(f"Connected to server.")
+			
+			
 	def _initialise_connection(self):
+		self._set_up_connection("INITIALISE")
+		
+	
+	def _restart_connection(self):
+		self._set_up_connection("RESTART")
+		
+		
+	def _set_up_connection(self, message):
 		# Send 'INITIALISE' message and register experiment parameters
-		data_dict = {'message': 'INITIALISE', 'value': self.experiment_dict}
+		data_dict = {'message': message, 'value': self.experiment_dict}
 		data_string = json.dumps(data_dict)
 				
 		self.sock.send(data_string.encode(encoding='utf-8'))
@@ -184,7 +210,3 @@ class NEST:
 		return_data = json.loads(return_data.decode(encoding='utf-8')) 
 
 		self.newest_trial = np.array(return_data['next_trial'])
-		
-	
-	def _restart_connection(self):
-		pass	

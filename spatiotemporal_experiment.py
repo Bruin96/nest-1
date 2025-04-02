@@ -18,10 +18,10 @@ from psychopy.tools.filetools import fromFile, toFile
 from psychopy.tools.monitorunittools import cm2pix, deg2pix, pix2deg
 from psychopy.visual import Circle, Rect
 
-from lib.additional_staircase import ExtendedMultiStairHandler
-from lib.dct_tools import generate_stimulus, visualize_stimuli
-from lib.display_tools import supported_displays, get_display_params
-from lib.utils import reset_display
+from psychovisual_utils.additional_staircase import ExtendedMultiStairHandler
+from psychovisual_utils.dct_tools import generate_stimulus, visualize_stimuli
+from psychovisual_utils.display_tools import supported_displays, get_display_params
+from psychovisual_utils.utils import reset_display
 
 p = psutil.Process(os.getpid())
 if os.name == "nt":
@@ -283,9 +283,7 @@ def main(args=None):
     print(f"running main()...")
     
     # Start NEST server
-    server_NEST = subprocess.Popen([sys.executable, \
-        './NEST/NEST_Server.py', \
-        './Results/server_config.json'])
+    NEST_object = NEST()
 
     # get unfinished experiment sessions
     unfinished_experiments = ["None"]
@@ -384,9 +382,13 @@ def main(args=None):
     random_base = [0.0, 9e-4, 7e-4, 6e-4, 5e-4, 4e-4]
     conv_level = SNR * random_base[num_dims-1]
     
-    value_dict = {'p': 0.1, 'lbs': lbs, 'ubs': ubs, 'asymptote': asymptote, \
-                    'lapse': lapse, 'hidden_layers': w, 'num_dims': num_dims, \
-                    'convergence_level': conv_level, 'a': 4.8, 'b': 5.8, 'c': 6.6, 'd': 5.0}
+    server_config = {"port": 3000, "host": "127.0.0.1", \
+		"save_dir": "./experiment_results", "savename": savename}
+    
+    experiment_params = {"num_dims": num_dims, "lbs": lbs, \
+		"ubs": ubs, "p": 0.1, "lapse": lapse, "asymptote": asymptote, \
+		"convergence_level": conv_level, "hidden_layers": w, \
+		"random_chance": 0.5, 'a': 0.8, 'b': 10.6, 'c': 6.0, 'd': 4.0}
 
     if expinfo["continue_from"] == "None":
         savename = expinfo["observer"] + "_" + expinfo["dateStr"] + "_" + expinfo["session"] + "_"
@@ -509,8 +511,8 @@ def main(args=None):
     # event_pool = 0  # intervals (in terms of number of frames) to check for keyboard events
     
     # Connect to NEST port
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect(('127.0.0.1', 3000))
+    NEST_object.start_new(server_config_dict=server_config, \
+						  experiment_params=experiment_params)
     
     # Set config values on server
     config_dict = {'savename': savename, 'save_dir': results_dir}
