@@ -23,6 +23,8 @@ from psychovisual_utils.dct_tools import generate_stimulus, visualize_stimuli
 from psychovisual_utils.display_tools import supported_displays, get_display_params
 from psychovisual_utils.utils import reset_display
 
+from NEST.NEST import NEST
+
 p = psutil.Process(os.getpid())
 if os.name == "nt":
     p.nice(psutil.HIGH_PRIORITY_CLASS)
@@ -36,16 +38,13 @@ def compute_windowed_Fisher_energy(energies, window=10):
     N = energies.shape[0]
     Fisher_diff = np.zeros(N-1)
     for i in range(1, num_samples):
-        Fisher_diff[i-1] = np.abs(Fisher_energies[:, i]	- Fisher_energies[:, i-1])	
+        Fisher_diff[i-1] = np.abs(Fisher_energies[:, i] - Fisher_energies[:, i-1])  
         
     Fisher_window_diff = np.array([np.sum(np.array([1/window*Fisher_diff[k-j] \
-		for j in range(window)])) for k in range(window-1, len(Fisher_diff))])
+        for j in range(window)])) for k in range(window-1, len(Fisher_diff))])
     
     windowed_value = Fisher_window_diff[-1]
     return windowed_value
-
-# from psychopy.monitors import MonitorCenter
-# import matplotlib.pyplot as plt
 
 
 def fixation_target(
@@ -279,10 +278,8 @@ def main(args=None):
             max_trial_count = -1
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
-        
-    print(f"running main()...")
-    
-    # Start NEST server
+            
+    # Create NEST object
     NEST_object = NEST()
 
     # get unfinished experiment sessions
@@ -314,14 +311,12 @@ def main(args=None):
     # check if a previous parameters file exists
     if os.path.exists(params_filename):
         expinfo = fromFile(params_filename)
-        # if expinfo_loaded.keys() == expinfo.keys():
-        #     expinfo = expinfo_loaded  # load only if all keys are present
 
     expinfo["dateStr"] = data.getDateStr()  # add the current time
     expinfo["display"] = list(supported_displays.keys())
     expinfo["continue_from"] = unfinished_experiments
+    
     # present a dialogue to change params
-
     dlg = gui.DlgFromDict(
         expinfo,
         title="Temporal CSF Experiment",
@@ -370,25 +365,17 @@ def main(args=None):
     print(f"patch_px: {patch_px}")
     lbs = [0.0, 0.0, 1.0, 5.0, -9]#1/512]
     ubs = [math.floor(patch_px[2]/2), math.floor(patch_px[2]/2), \
-			24, 40.0, -1]#0.5]
-			
+            24, 40.0, -1]#0.5]
+            
     # Initialise NEST parameters
     num_dims = 5
     asymptote = 0.5
     lapse = 0.01
     w = [256, 128, 32]
-	
+    
     SNR = 5.0
     random_base = [0.0, 9e-4, 7e-4, 6e-4, 5e-4, 4e-4]
     conv_level = SNR * random_base[num_dims-1]
-    
-    server_config = {"port": 3000, "host": "127.0.0.1", \
-		"save_dir": "./experiment_results", "savename": savename}
-    
-    experiment_params = {"num_dims": num_dims, "lbs": lbs, \
-		"ubs": ubs, "p": 0.1, "lapse": lapse, "asymptote": asymptote, \
-		"convergence_level": conv_level, "hidden_layers": w, \
-		"random_chance": 0.5, 'a': 0.8, 'b': 10.6, 'c': 6.0, 'd': 4.0}
 
     if expinfo["continue_from"] == "None":
         savename = expinfo["observer"] + "_" + expinfo["dateStr"] + "_" + expinfo["session"] + "_"
@@ -426,7 +413,7 @@ def main(args=None):
         print("Window has shaders.")
     else:
         print("Window DOES NOT have shaders.")
-    # win.saveFrameIntervals(fileName="frameintervals.txt", clear=True)
+
     msf = win.getMsPerFrame(nFrames=240, showVisual=True, msg="", msDelay=500.0)
     print("Measured duration per frame: %s (avg, SD, median) of duration" % str(msf))
     measured_fps = round(1 / msf[2] * 1000)
@@ -475,9 +462,18 @@ def main(args=None):
     else:
         fixation_target_size_px = fixation_target_size_px // 6 * 6
     center = fixation_target(fixation_target_size_px, win)
-
-    # check for the blind spot
-    # test_blind_spot(win, center, patch_px, (10, 25, 40))
+    
+    # Connect to NEST port
+    server_config = {"port": 3000, "host": "127.0.0.1", \
+        "save_dir": "./experiment_results", "savename": savename}
+    
+    experiment_params = {"num_dims": num_dims, "lbs": lbs, \
+        "ubs": ubs, "p": 0.1, "lapse": lapse, "asymptote": asymptote, \
+        "convergence_level": conv_level, "hidden_layers": w, \
+        "random_chance": 0.5, 'a': 0.8, 'b': 10.6, 'c': 6.0, 'd': 4.0}
+    
+    NEST_object.start_new(server_config_dict=server_config, \
+                          experiment_params=experiment_params)
 
     # display instructions and wait
     start_message = "Hit a key when ready."
@@ -498,39 +494,11 @@ def main(args=None):
     event.waitKeys()
     start_t = time.time()
 
-    # vid_idct = np.zeros(patch_px)
-
-    # frame_idx = 0
     resting_mode = False
     trial_idx = 0
     pause_update = False
     skip_frame = False
-    # mc = clock.MonotonicClock(start_time=0)
-    # abort_trial = False
-    # t = 0
-    # event_pool = 0  # intervals (in terms of number of frames) to check for keyboard events
-    
-    # Connect to NEST port
-    NEST_object.start_new(server_config_dict=server_config, \
-						  experiment_params=experiment_params)
-    
-    # Set config values on server
-    config_dict = {'savename': savename, 'save_dir': results_dir}
-    data_dict = {'message': 'SET_CONFIG', 'value': {'config_dict': config_dict}}
-    config_string = json.dumps(data_dict)
-    sock.send(config_string.encode(encoding='utf-8'))
-    
-    return_data = sock.recv(4096)
-    
-    # Start NEST procedure
-    if expinfo["continue_from"] == "None":
-        data_dict = {'message': 'INITIALISE', 'value': value_dict}
-        data_string = json.dumps(data_dict)
-    else:
-        data_dict = {"message": "RESTART", 'value': {'data_dir': \
-            os.path.abspath(results_dir), 'config_dict': value_dict}}
-        data_string = json.dumps(data_dict)
-    
+
     finished = False
     if expinfo["continue_from"] == "None":
         curr_trial = 1
@@ -538,7 +506,7 @@ def main(args=None):
         train_out = np.load(filename + '_train_out.npy')
         curr_trial = train_out.shape[0] + 1
     
-    
+    '''
     # Show the grid of all stimuli
     zxy_set = []
     # approximately 0, 4.4, 8.8 cpds
@@ -551,26 +519,21 @@ def main(args=None):
             for y in y_:
                 zxy_set.append((z, x, y))
     visualize_stimuli(patch_px, zxy_set, 0.5, win, len(z_), 9)
+    '''
     
     
     while not finished:
         print(f"Trial {curr_trial}")
-   
-        # Request next step from NEST server
-        sock.send(data_string.encode(encoding='utf-8'))
-
-        # Get value from NEST server
-        return_data = sock.recv(4096)
-        return_data = json.loads(return_data.decode(encoding='utf-8')) 
-        sample = return_data['next_trial']
+        
+        sample = NEST_object.get_trial()
         sample = [int(val) for val in sample[0:-1]] + [sample[-1]]
         print(f"sample: {sample}")
         
         ecc = sample[3]
         x = sample[0]
         y = sample[1]
-        z = 0#sample[2]
-        current_threshold = 2**sample[4]
+        z = sample[2]
+        current_threshold = 2.0**sample[4]
         
         positions = ["left", "right"]
         pos_mult = {"left": -1, "right": 1}
@@ -584,11 +547,6 @@ def main(args=None):
         print(show_txt)
 
         vid_idct = generate_stimulus(patch_px, x, y, z, current_threshold)
-        # datestr = data.getDateStr(format='%Y-%m-%d-%H%M%S')
-        # for (i, frame) in enumerate(vid_idct):
-        #     im = Image.fromarray(frame*255)
-        #     im = im.convert('RGB')
-        #     im.save(f"avg_stim_{datestr}_{i:03d}.png", format="PNG")
         stims = []
 
         vid_idct = vid_idct[:, 0: patch_px[1] - 1, 0: patch_px[2] - 1]
@@ -617,7 +575,7 @@ def main(args=None):
                     pos=(
                         round(getx(pix_dist) * pos_mult[position]),
                         round(gety(pix_dist)),
-                    ),  # pos=(round(deg2pix(ecc, mon) * pos_mult[position]), 0.0),
+                    ),
                     size=(patch_px[1] - 1, patch_px[2] - 1),
                     ori=0.0,
                     color=(1, 1, 1),
@@ -627,7 +585,6 @@ def main(args=None):
                     depth=0,
                     interpolate=True,
                     flipHoriz=False,
-                    # texRes=128,  # Power-of-two int. Sets the resolution of the mask and texture. texRes is overridden if an array or image is provided as mask.
                     flipVert=False,
                     name=None,
                     autoLog=False,
@@ -649,7 +606,7 @@ def main(args=None):
                     pos=(
                         round(getx(pix_dist) * pos_mult[position]),
                         round(gety(pix_dist)),
-                    ),  # pos=(round(deg2pix(ecc, mon) * pos_mult[position]), 0.0),
+                    ), 
                     size=(patch_px[1] - 1, patch_px[2] - 1),
                     ori=0.0,
                     color=(1, 1, 1),
@@ -659,7 +616,6 @@ def main(args=None):
                     depth=0,
                     interpolate=True,
                     flipHoriz=False,
-                    # texRes=128,  # Power-of-two int. Sets the resolution of the mask and texture. texRes is overridden if an array or image is provided as mask.
                     flipVert=False,
                     name=None,
                     autoLog=False,
@@ -681,33 +637,18 @@ def main(args=None):
             reset_display(win)
             trial_idx = 0
            
-        has_converged = return_data['converged']
+        has_converged = NEST_object.check_convergence()
         if has_converged:
             print(f"Finished experiment by Fisher energy convergence.")
             finished = True
-            data_dict = {"message": "TERMINATE", "value": {"finished": True}}
-            data_string = json.dumps(data_dict)
-            sock.send(data_string.encode(encoding='utf-8'))
-        
+            NEST_object.terminate()        
             
         if max_trial_count != -1 and curr_trial >= max_trial_count:
             print(f"Finished experiment by number of trials.")
             finished = True
-            data_dict = {"message": "TERMINATE", "value": {"finished": True}}
-            data_string = json.dumps(data_dict)
-            sock.send(data_string.encode(encoding='utf-8'))
-        '''
-        counter = visual.TextStim(
-            win,
-            pos=[0, -2.0],
-            text="%d/%d"
-                 % (
-                     len(conditions) - len(stairs.runningStaircases),
-                     len(conditions),
-                 ),
-            height=text_height,
-        )
-        '''
+            NEST_object.terminate()
+
+        
         frame_idx, direction = 0, 1
         warmup_idx = 0
         while True:
@@ -731,8 +672,6 @@ def main(args=None):
                         elif key == "q":
                             # abort the experiment
                             win.close()
-                            # plt.plot(win.frameIntervals)
-                            # plt.show()
                             core.quit()
                         elif key == "p":
                             pause_update = not pause_update
@@ -774,21 +713,16 @@ def main(args=None):
                 if resp is not None:
                     # Create data to send to NEST, which asks for new trial
                     print(f"Response value: {resp}")
-                    data_dict = {'message': 'NEXT_TRIAL', 'value': resp}
-                    data_string = json.dumps(data_dict)
-                    #stairs.addResponse(resp)
+                    NEST_object.register_result(resp)
+
                     break
 
                 if warmup_idx < num_warmup_frames:
                     warmup_frames[warmup_idx].draw()
                     for s in center:
                         s.draw()
-                    #counter.draw()
+
                     win.flip()
-                    
-                    if warmup_idx == 0:
-                        win.getMovieFrame()
-                        win.saveMovieFrames("./initial_frame.png")
                     
                     warmup_idx += 1
                 else:
@@ -809,9 +743,6 @@ def main(args=None):
                         s.draw()
                     stims[frame_idx].draw()
                     win.flip()
-                    
-                    win.getMovieFrame()
-                    win.saveMovieFrames("./stimulus.png")
         
         curr_trial += 1
 
@@ -840,10 +771,10 @@ if __name__ == "__main__":
         help="Path to the results directory",
     )
     parser.add_argument(
-		"--stop-crit",
-		type=int,
-		default=25,
-		help="Stopping criterion. Fixed number of samples if positive, otherwise using NEST convergence.",
-	)
+        "--stop-crit",
+        type=int,
+        default=25,
+        help="Stopping criterion. Fixed number of samples if positive, otherwise using NEST convergence.",
+    )
     args = parser.parse_args()
     main(args)

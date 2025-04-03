@@ -15,12 +15,17 @@ class NEST:
 		self.port = 3000
 		
 		self.newest_trial = None
+		self.has_converged = False
 		
 		self.register_config_file(config_filename)
 		
 		
 	def get_trial(self):
 		return self.newest_trial
+		
+		
+	def check_convergence(self):
+		return self.has_converged
 		
 		
 	def register_result(self, Y, weight=1.0):
@@ -38,6 +43,7 @@ class NEST:
 		return_data = json.loads(return_data.decode(encoding='utf-8')) 
 
 		self.newest_trial = np.array(return_data['next_trial'])
+		self.has_converged = return_data["converged"]
 		
 		
 	
@@ -148,6 +154,10 @@ class NEST:
 		data_string = json.dumps(data_dict)
 		self.sock.send(data_string.encode(encoding='utf-8'))
 		
+		port_filename = self.results_dir + "/port_number.txt"
+		if os.path.exists(port_filename):
+			os.remove(port_filename)
+		
 	
 	@staticmethod
 	def create_config_file(host="127.0.0.1", port=3000, save_dir="."):
@@ -162,6 +172,8 @@ class NEST:
 			
 			
 	def _initialise_server(self, server_config_dict, experiment_params):
+		self.results_dir = server_config_dict["save_dir"]
+		
 		# Construct server config file
 		with open(self.results_dir + '/server_config.json', 'w') as f:
 			json.dump(server_config_dict, f)
@@ -176,7 +188,10 @@ class NEST:
 			
 		# Wait for server to start up
 		print(f"Waiting for server to spin up...")
-		time.sleep(5.0)
+		while not os.path.exists(self.results_dir + "/port_number.txt"):
+			time.sleep(1.0)
+			
+		time.sleep(2.0)
 		
 		# Initialise connection
 		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -184,6 +199,8 @@ class NEST:
 		# Read port number from file
 		with open(self.results_dir + "/port_number.txt", "r") as file_obj:
 			self.port = int(file_obj.readline())
+			
+		print(f"connecting to server on port {self.port}")
 		
 		self.sock.connect(('127.0.0.1', self.port))
 		

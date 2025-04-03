@@ -97,6 +97,8 @@ class NEST_Server:
 			else self.use_print
 		self.save_dir = config_dict['save_dir'] if 'save_dir' in \
 			config_dict else self.save_dir
+		self.save_name = config_dict['savename'] if 'savename' in \
+			config_dict else self.save_name
 			
 			
 	# Parse input config_dict and set parameters
@@ -118,8 +120,9 @@ class NEST_Server:
 	def open_connection(self, port_no, host_name):
 		print(f"Opening connection on server side...")
 		# Create socket object and listen for incoming connection
+		port_idx = -1
 		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-			# Find an available por to use
+			# Find an available port to use
 			for i in range(1024, 40000):
 				try:
 					s.bind((host_name, int(i)))
@@ -127,13 +130,18 @@ class NEST_Server:
 					
 					# save port number to file
 					filename = os.path.join(self.save_dir, "port_number.txt")
-					with open(filename, "w+") as f:
-						f.write(str(int(i)))
+
+					port_idx = i
+					
 					break
 				except OSError as e:
 					pass
-			print(f"Listening...")
+			print(f"Server is listening...")
 			s.listen()
+			
+			with open(filename, "w+") as f:
+				f.write(str(int(port_idx)))
+			
 			(conn, addr) = s.accept()
 			print(f"Accepted connection: {addr}")
 			
