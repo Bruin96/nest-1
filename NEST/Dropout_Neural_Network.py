@@ -6,7 +6,7 @@ import torch
 import numpy as np
 import time
 
-from Neural_Network import Neural_Network
+from NEST.Neural_Network import Neural_Network
 
 
 class Dropout_Neural_Network(Neural_Network):
