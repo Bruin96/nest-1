@@ -5,8 +5,12 @@
 import torch
 import numpy as np
 import time
+import sys
+import os
 
-from NEST.Neural_Network import Neural_Network
+sys.path.insert(0, os.path.expanduser("NEST"))
+
+from Neural_Network import Neural_Network
 
 
 class Dropout_Neural_Network(Neural_Network):

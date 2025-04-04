@@ -13,7 +13,7 @@ from typing import NoReturn, Sequence, Union
 
 import numpy as np
 import psutil
-from psychopy import core, data, event, gui, monitors, visual  # , clock
+from psychopy import core, data, event, gui, monitors, visual
 from psychopy.tools.filetools import fromFile, toFile
 from psychopy.tools.monitorunittools import cm2pix, deg2pix, pix2deg
 from psychopy.visual import Circle, Rect
