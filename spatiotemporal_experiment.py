@@ -20,7 +20,8 @@ from psychopy.visual import Circle, Rect
 
 from psychovisual_utils.additional_staircase import ExtendedMultiStairHandler
 from psychovisual_utils.dct_tools import generate_stimulus, visualize_stimuli
-from psychovisual_utils.display_tools import supported_displays, get_display_params
+from psychovisual_utils.display_tools import supported_displays, \
+                        get_display_params, generate_display_params
 from psychovisual_utils.utils import reset_display
 
 from NEST.NEST import NEST
@@ -264,6 +265,9 @@ def draw_help_message(win: visual.Window):
 
 
 def main(args=None):
+    peak_lum = args.peak_lum
+    refresh_rate = args.refresh_rate
+    
     params_filename = "lastParams.psydat"
     core.checkPygletDuringWait = False
     num_frames = 25
@@ -313,7 +317,7 @@ def main(args=None):
         expinfo = fromFile(params_filename)
 
     expinfo["dateStr"] = data.getDateStr()  # add the current time
-    expinfo["display"] = list(supported_displays.keys())
+    expinfo["display"] = [mon for mon in monitors.getAllMonitors()]#list(supported_displays.keys())
     expinfo["continue_from"] = unfinished_experiments
     
     # present a dialogue to change params
@@ -329,14 +333,11 @@ def main(args=None):
         toFile(params_filename, expinfo)
     else:
         core.quit()  # the user hit cancel so exit
-    display = get_display_params(expinfo["display"])
-
-    mon = monitors.Monitor(
-        "testMonitor"
-    )  # fetch the most recent calib for this monitor
-    # mon = monitors.Monitor(
-    #     "acer"
-    # )  # fetch the most recent calib for this monitor
+    display = generate_display_params(monitors.Monitor(expinfo["display"]), peak_lum, refresh_rate)
+        
+    mon = monitors.Monitor(expinfo["display"])
+    
+    # fetch the most recent calib for this monitor
     calibs = mon.calibs
     print("Calibration profiles for this display:")
     for k in calibs.keys():
@@ -776,5 +777,18 @@ if __name__ == "__main__":
         default=25,
         help="Stopping criterion. Fixed number of samples if positive, otherwise using NEST convergence.",
     )
+    parser.add_argument(
+        "--peak-lum",
+        type=float,
+        default=200,
+        help="Peak luminance of the display. Default to 200. Set to -1 if luminance is available via PsychoPy Monitor Center.",
+    )
+    parser.add_argument(
+        "--refresh-rate",
+        type=int,
+        default=60,
+        help="Refresh rate of the display. Defaults to 60 Hz.",
+    )
+    
     args = parser.parse_args()
     main(args)

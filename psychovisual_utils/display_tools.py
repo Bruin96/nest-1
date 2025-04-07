@@ -92,6 +92,31 @@ def get_display_params(display):
     params["PeakCPD"] = peak_cpd
     params["ViewingDist_px"] = view_dist_px
     return params
+    
+    
+def generate_display_params(display, peak_lum, refresh_rate):
+    params = {}
+    params["Name"] = display.name
+    params["ViewingDist"] = display.currentCalib["distance"] / 100.0 # in meters
+    params["Width"] = display.currentCalib["width"] / 100.0 # in meters
+    params["Height"] = 9.0 / 16.0 * params["Width"]
+    params["PeakLum"] = peak_lum if peak_lum > 0 else 2.0 * display.currentCalib["meanLum"]
+    
+    px_horiz, px_vert = display.getSizePix()
+    params["PxHoriz"] = px_horiz
+    params["PxVert"] = px_vert
+    
+    params["RefreshRate"] = refresh_rate
+    
+    px_size = params["Width"] / params["PxHoriz"]
+    view_dist_px = params["ViewingDist"] / px_size
+    peak_cpd = np.tan(np.deg2rad(0.5)) * view_dist_px
+    params["PeakCPD"] = peak_cpd
+    params["ViewingDist_px"] = view_dist_px
+    
+    print(f"params: {params}")
+    
+    return params
 
 
 def eccentricity_map(params, frame_size=None, grid_size=None):
