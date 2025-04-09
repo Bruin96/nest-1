@@ -10,3 +10,5 @@ psutil==5.7.0
 opencv_python==4.5.1.48
 pandas==1.1.4
 parfor==2021.1.5
+pyglet==1.5.27
+wxpython==4.2.2
