@@ -562,9 +562,6 @@ def main(args=None):
             return e * np.sin(angle)
 
         pix_dist = get_flat_position(ecc, mon)
-        
-        win.getMovieFrame()
-        win.saveMovieFrames("./initial_frame.png")
 
         for frame in vid_idct:
             stims.append(
