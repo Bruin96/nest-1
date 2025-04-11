@@ -80,6 +80,9 @@ def analyse_results(data_dir):
 	ax.plot(x_range, thres, color="tomato")
 	ax.set_ylim(bottom=0, top=2.5)
 	
+	ax.set_xlabel("log Spatial frequency (log(cpd))", fontsize=16)
+	ax.set_ylabel("log Contrast Sensitivity", fontsize=16)
+	
 	plt.show()
 	
 if __name__ == "__main__":
