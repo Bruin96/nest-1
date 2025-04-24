@@ -158,7 +158,7 @@ plt.show()
 ```
 At the end, we find the following plot, which represents the output of NEST alongside the location of the threshold of the reference function:
 
---- ADD IMAGE HERE AFTER PUSHING IT ---
+![](Results/Nest_data_analysis_CSF_function_visualisation.png)
 
 As can be seen from the figure, this simple example has a very close correspondence with the ground truth function, as seen by the fact that the threshold function (orange) lies in the transition region everywhere in the input space. This example has shown how to go from a finished experiment to a visualisation of the results, during which we loaded our trained neural network, prepared the data for evaluation, and visualised the evaluated data grid. For your own experiment, you can similarly explore the dimensions of your experiment, either via visualisation of the entire input space or, for example, by studying two-dimensional slices of the (higher-dimensional) input space that you chose to study.
 
